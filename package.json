@@ -1,0 +1,17 @@
+{
+  "name": "approval-boundary-checker",
+  "version": "0.0.0",
+  "description": "Check where human approval is required before an agent can cause side effects.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "test": "node --test"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/edilec/approval-boundary-checker"
+  }
+}
