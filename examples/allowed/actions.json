@@ -1,0 +1,38 @@
+{
+  "schemaVersion": "1",
+  "actions": [
+    {
+      "id": "read-release-brief",
+      "tool": "fs.readFile",
+      "effect": "read",
+      "scope": "workspace",
+      "dataClasses": ["internal"],
+      "target": "docs/release-brief.md",
+      "description": "Read the brief the release notes are written from."
+    },
+    {
+      "id": "write-draft-notes",
+      "tool": "fs.writeFile",
+      "effect": "write",
+      "scope": "workspace",
+      "dataClasses": ["internal"],
+      "reversible": true,
+      "target": "build/release-notes.draft.md"
+    },
+    {
+      "id": "publish-release-notes",
+      "tool": "http.post",
+      "effect": "write",
+      "scope": "external",
+      "dataClasses": ["public"],
+      "target": "https://example.invalid/releases",
+      "approval": {
+        "actionId": "publish-release-notes",
+        "approvedBy": "release-manager",
+        "approvedAt": "2026-09-14T08:30:00Z",
+        "expiresAt": "2026-09-14T20:30:00Z",
+        "note": "Approved for the 4.2.0 announcement only."
+      }
+    }
+  ]
+}
