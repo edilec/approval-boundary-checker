@@ -322,6 +322,7 @@ export async function checkApprovalBoundaryWithSources(options = {}) {
         warnings: counts.warnings,
         info: counts.info,
       },
+      // Whatever a caller hands over, an incomplete run publishes no verdicts.
       decisions: incomplete ? [] : decisions,
       findings: emitted,
     }
@@ -391,7 +392,14 @@ export async function checkApprovalBoundaryWithSources(options = {}) {
         + 'so no verdicts were produced.',
         { suggestion: 'Raise --timeout-ms, or split the plan.' },
       )
-      return finish({ declared, incomplete: true }, [])
+      /**
+       * The verdicts already reached are handed over rather than dropped here,
+       * on purpose. `finish` is the one place that decides status, so it has to
+       * be the one place that discards them -- a branch that tidies up after
+       * itself leaves the discard untested, and the next branch somebody adds
+       * will forget to tidy.
+       */
+      return finish({ declared, incomplete: true }, decisions)
     }
 
     const { decision, matchedRules } = classifyAction(action, policyDocument.rules, policyDocument.defaultDecision)

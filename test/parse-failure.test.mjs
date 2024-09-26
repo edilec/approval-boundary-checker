@@ -81,6 +81,24 @@ test('an empty document keeps its own plain sentence', () => {
 })
 
 test('the backstop refuses any message that still carries a double quote', () => {
+  /**
+   * The case the backstop exists for: a wording that reaches the SAFE
+   * positional branch while still carrying a quoted span in front of the
+   * position. The branch logic happily returns the prefix, and the prefix holds
+   * the document. Across 500,206 distinct V8 parse messages every message with
+   * no quoted snippet also carried no double quote at all -- V8 quotes JSON
+   * punctuation with apostrophes -- so a surviving double quote means a snippet
+   * survived, whatever the branches above concluded.
+   */
+  assert.equal(
+    parseFailureDetail(new Error('Bad escaped character "AKIAIOSFODNN7EXAMPLE" in JSON at position 12 (line 1 column 13)')),
+    UNPARSEABLE,
+  )
+  assert.equal(
+    parseFailureDetail(new Error('Unexpected token \'"\', "a" is not valid JSON')),
+    UNPARSEABLE,
+    'even the offending token itself may be a double quote',
+  )
   assert.equal(
     parseFailureDetail(new Error('A wording no future V8 has invented yet: "SECRETVALUE" is bad')),
     UNPARSEABLE,
