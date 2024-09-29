@@ -162,6 +162,9 @@ export function validateApproval(action, pointer) {
       return { state: 'malformed', reason: '"approval.expiresAt" is earlier than "approval.approvedAt"' }
     }
   }
+  if (raw.actionId !== undefined && typeof raw.actionId !== 'string') {
+    return { state: 'malformed', reason: '"approval.actionId" is not a string, so it names no action at all' }
+  }
   if (raw.actionId !== undefined && raw.actionId !== action.id) {
     return {
       state: 'mismatched',

@@ -15,7 +15,12 @@ First implementation.
 - `defaultDecision` accepts only `requires-approval` or `denied`; a policy
   asking to default to `allowed` is refused as malformed.
 - An approval that is present but unreadable reports `approval-malformed`, never
-  `approval-missing`.
+  `approval-missing`. An `approval.actionId` that is not a string is unreadable
+  rather than a mismatch: it names no action at all.
+- A document value that cannot be turned into a string — an object carrying a
+  non-callable `toString` — is described by its shape (`[object]`, `[array]`)
+  and the input is reported as uninterpretable. It never aborts the run, and it
+  never suppresses the findings for the other input.
 - An incomplete run — unreadable, undecodable, unparseable or uninterpretable
   input, a limit reached, a time budget expired, or a plan declaring no actions
   — produces no per-action verdicts at all and exits 2.
