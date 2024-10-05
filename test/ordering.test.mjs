@@ -63,20 +63,33 @@ test('findings come back in code-unit order of their pointers, not collation ord
 
 test('location.file is the primary sort key, ahead of the pointer', async (t) => {
   const directory = await workspace(t)
-  // A policy finding with a LATE pointer and an actions finding with an EARLY
-  // one. If the pointer were compared first, /rules/... would come before
-  // /actions/... and this order would reverse.
+  /**
+   * The pointers have to DISAGREE with the file names, or this proves nothing.
+   *
+   * The fixture here before used `/actions/aaa/effect` and `/rules/zzz/decision`
+   * and claimed that comparing the pointer first would reverse them. It would
+   * not: `a` precedes `r` by code unit, so both orderings agree and deleting the
+   * primary key left the suite green while a real report came out reversed.
+   *
+   * So: the actions finding takes the LATE pointer and the policy finding the
+   * early one. By file, actions precedes policy. By pointer alone,
+   * `/defaultDecision` precedes `/schemaVersion` and the pair swaps.
+   */
   const { actionsPath, policyPath } = await prepare(
     directory,
-    actionsDocument([externalWrite({ id: 'aaa', effect: 'sideways' })]),
-    policyDocument({ rules: [{ id: 'zzz', effects: ['read'], decision: 'perhaps' }] }),
+    actionsDocument([], { schemaVersion: '2' }),
+    policyDocument({ defaultDecision: 'allowed' }),
   )
   const report = await checkApprovalBoundary({
     actions: actionsPath, policy: policyPath, now: () => Date.parse(FIXED_NOW),
   })
-  assert.deepEqual(
-    report.findings.map((finding) => [finding.location.file, finding.location.pointer]),
-    [['actions', '/actions/aaa/effect'], ['policy', '/rules/zzz/decision']],
+  const emitted = report.findings.map((finding) => [finding.location.file, finding.location.pointer])
+  assert.deepEqual(emitted, [['actions', '/schemaVersion'], ['policy', '/defaultDecision']])
+
+  const byPointerAlone = [...emitted].sort((left, right) => byCodeUnit(left[1], right[1]))
+  assert.notDeepEqual(
+    byPointerAlone, emitted,
+    'the fixture must be one the two orderings disagree about, or dropping the file key would pass',
   )
 })
 
