@@ -243,3 +243,21 @@ test('one unrenderable value does not suppress the findings for the other input'
     'the poisoned actions document must not take the policy findings down with it',
   )
 })
+
+test('escapePointerSegment escapes ~ before /, as RFC 6901 requires', () => {
+  /**
+   * Unreachable from a document today -- `ID_PATTERN` admits neither character,
+   * so every id that reaches a pointer is already safe. It is exported public
+   * API all the same, and the ORDER is the part that goes wrong silently: escape
+   * `/` first and a segment containing a literal `~1` decodes back as a slash,
+   * so the pointer names a different place in the document than the one the
+   * finding is about.
+   */
+  assert.equal(escapePointerSegment('a/b'), 'a~1b')
+  assert.equal(escapePointerSegment('a~b'), 'a~0b')
+  assert.equal(escapePointerSegment('~/'), '~0~1')
+  assert.equal(escapePointerSegment('~1'), '~01', 'a literal ~1 must not decode back to a slash')
+  assert.equal(escapePointerSegment('~0'), '~00')
+  assert.equal(escapePointerSegment('plain'), 'plain', 'and an ordinary segment is left alone')
+  assert.equal(escapePointerSegment(''), '')
+})

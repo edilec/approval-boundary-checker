@@ -25,8 +25,10 @@ import { link, lstat, mkdir, readFile, symlink, writeFile } from 'node:fs/promis
 import { join } from 'node:path'
 import test from 'node:test'
 
+import { WRITE_NO_FOLLOW, checkApprovalBoundaryWithSources } from '../src/index.mjs'
 import {
-  FIXED_NOW, actionsDocument, externalWrite, policyDocument, prepare, runCli, workspace, workspaceRead, writeFixture,
+  FIXED_NOW, PACKAGE_ROOT, actionsDocument, externalWrite, policyDocument, prepare, runCli, workspace,
+  workspaceRead, writeFixture,
 } from './helpers.mjs'
 
 const PRECIOUS = 'a file this run was never asked to touch\n'
@@ -207,4 +209,92 @@ test('a policy document that is itself the destination is refused even when it i
   ])
   assert.equal(run.code, 2)
   assert.match(await readFile(policyPath, 'utf8'), /"defaultDecision"/)
+})
+
+/**
+ * The two guards whose comments asserted an invariant nothing held.
+ *
+ * Both are deliberate and both were undefended: dropping `O_NOFOLLOW` from the
+ * write flag, and moving `sources.push(path)` to after a successful read, each
+ * left 131 of 131 green.
+ */
+
+test('the write flag refuses a symbolic link at the last component, and opens an ordinary path', async (t) => {
+  /**
+   * This is the half of hole 1 that `assertWritableDestination` cannot do.
+   * That check refuses a link on sight, before anything is opened; between the
+   * check and the open there is a window, and a link planted inside it is an
+   * ELOOP from the kernel rather than a write through it. The window cannot be
+   * opened deterministically from a test, so what is pinned here is what the
+   * flag the CLI passes actually does.
+   */
+  const directory = await workspace(t)
+  const outside = join(directory, 'outside.txt')
+  await writeFile(outside, PRECIOUS)
+  const planted = join(directory, 'planted.json')
+  await symlink(outside, planted)
+
+  await assert.rejects(
+    writeFile(planted, 'written straight through the link\n', { encoding: 'utf8', flag: WRITE_NO_FOLLOW }),
+    (error) => error.code === 'ELOOP',
+    'a symbolic link at the destination must be refused by the kernel, not followed',
+  )
+  assert.equal(await readFile(outside, 'utf8'), PRECIOUS, 'and the file it pointed at survives')
+
+  // And it is not a flag that refuses everything, which would pass the line
+  // above while making --decisions-out unusable.
+  const plain = join(directory, 'plain.json')
+  await writeFile(plain, 'ordinary\n', { encoding: 'utf8', flag: WRITE_NO_FOLLOW })
+  assert.equal(await readFile(plain, 'utf8'), 'ordinary\n')
+})
+
+test('the CLI writes with that flag rather than a plain truncating open', async () => {
+  /**
+   * A source assertion, and deliberately so. The race the flag closes cannot be
+   * opened from a test, so nothing observable changes if the CLI stops passing
+   * it -- which is exactly why it went undefended. The behaviour of the flag
+   * itself is pinned above; what this holds is that the CLI still uses it.
+   */
+  const source = await readFile(join(PACKAGE_ROOT, 'bin', 'approval-boundary-checker.mjs'), 'utf8')
+  const writes = [...source.matchAll(/await writeFile\([\s\S]*?\)\n/g)].map(([match]) => match)
+  assert.equal(writes.length, 1, 'the CLI writes in exactly one place')
+  assert.match(writes[0], /flag: WRITE_NO_FOLLOW/)
+  assert.match(source, /import \{ WRITE_NO_FOLLOW, assertWritableDestination \}/)
+})
+
+test('a file that could not be read is still on the list the destination is checked against', async (t) => {
+  /**
+   * `readJsonDocument` records the path BEFORE it opens it. Recording after a
+   * successful read would leave every file that threw off the list -- which is
+   * exactly the file a destination is most likely to collide with once
+   * something has already gone wrong. The list is a returned value, so the
+   * ordering is observable without needing the collision to happen.
+   */
+  const directory = await workspace(t)
+  const policyPath = await writeFixture(directory, 'policy.json', policyDocument())
+  const missing = join(directory, 'absent', 'actions.json')
+
+  const { report, sources } = await checkApprovalBoundaryWithSources({
+    actions: missing, policy: policyPath, now: () => Date.parse(FIXED_NOW),
+  })
+
+  assert.equal(report.status, 'incomplete')
+  assert.deepEqual(
+    sources, [missing, policyPath],
+    'both paths the run resolved are listed, in the order it resolved them, read or not',
+  )
+})
+
+test('the source list is every path the run resolved, and nothing else', async (t) => {
+  // The write guard is only as wide as this list. This tool resolves exactly
+  // the two files named on its command line -- it stats no path an action
+  // names, which `no-execution.test.mjs` proves -- so the list is those two.
+  const directory = await workspace(t)
+  const { actionsPath, policyPath } = await prepare(directory, actionsDocument([
+    externalWrite({ target: join(directory, 'never-opened.txt') }),
+  ]))
+  const { sources } = await checkApprovalBoundaryWithSources({
+    actions: actionsPath, policy: policyPath, now: () => Date.parse(FIXED_NOW),
+  })
+  assert.deepEqual(sources, [actionsPath, policyPath])
 })

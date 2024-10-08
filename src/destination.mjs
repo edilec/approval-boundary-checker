@@ -1,5 +1,22 @@
+import { constants } from 'node:fs'
 import { lstat, realpath, stat } from 'node:fs/promises'
 import { dirname, resolve, sep } from 'node:path'
+
+/**
+ * Create or truncate, and refuse to follow a link at the LAST component.
+ *
+ * `assertWritableDestination` below refuses a symbolic link on sight, before
+ * anything is opened. This flag closes the window between that check and the
+ * open: a link planted in between is an ELOOP from the kernel rather than a
+ * write straight through it. Two independent checks because one of them can be
+ * raced, and the raced one is the one that matters when it fires.
+ *
+ * It lives here rather than in the CLI so a test can observe what the flag the
+ * CLI actually passes does: ELOOP on a symbolic link, and an ordinary open on
+ * an ordinary path. A flag that refused both would look like a guard and be a
+ * bug.
+ */
+export const WRITE_NO_FOLLOW = constants.O_WRONLY | constants.O_CREAT | constants.O_TRUNC | constants.O_NOFOLLOW
 
 /** Raised when a destination cannot be written to safely. The caller exits 2. */
 export class DestinationError extends Error {

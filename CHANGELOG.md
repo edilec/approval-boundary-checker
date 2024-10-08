@@ -27,7 +27,9 @@ First implementation.
 - Optional `--decisions-out`, guarded against a symbolic-link destination, a
   non-regular-file destination, and a destination that is the same file as an
   input including through a hard link. The destination is not confined to a
-  root, and the help text and README say so.
+  root, and the help text and README say so. The write flag is exported as
+  `WRITE_NO_FOLLOW`, so what it does — `ELOOP` on a link, an ordinary open on an
+  ordinary path — is observable rather than asserted in a comment.
 - The wall clock is injected and reaches exactly one decision, approval expiry;
   `--now` makes a run reproducible.
 - 29 rule ids, listed in [README.md](./README.md).

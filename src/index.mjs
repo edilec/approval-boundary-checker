@@ -48,7 +48,7 @@ export {
   validateActionsDocument, validateApproval, validatePolicyDocument,
 } from './policy.mjs'
 export { CONTROL_CLASSES, byCodeUnit, decodeUtf8, escapePointerSegment, parseFailureDetail, sanitize } from './text.mjs'
-export { DestinationError, assertWritableDestination } from './destination.mjs'
+export { DestinationError, WRITE_NO_FOLLOW, assertWritableDestination } from './destination.mjs'
 
 export const TOOL_ID = 'approval-boundary-checker'
 export const REPORT_SCHEMA_VERSION = '1'
