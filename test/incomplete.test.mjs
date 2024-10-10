@@ -12,8 +12,8 @@ import test from 'node:test'
 
 import { assertReportInvariants, checkApprovalBoundary } from '../src/index.mjs'
 import {
-  FIXED_NOW, actionsDocument, externalWrite, policyDocument, prepare, runCli, validApproval,
-  workspace, workspaceRead, writeFixture,
+  FIXED_NOW, FIXED_NOW_MS, actionsDocument, externalWrite, importSourceWithSubstitution, policyDocument,
+  prepare, runCli, validApproval, workspace, workspaceRead, writeFixture,
 } from './helpers.mjs'
 
 /** A monotonic clock that reads `0` for a while and then jumps past any budget. */
@@ -110,7 +110,7 @@ test('both unreadable inputs are named, so a consumer knows which one to fix', a
  */
 test('an empty plan cannot exit 0, and a pass with nothing checked cannot be built', async (t) => {
   const directory = await workspace(t)
-  const { args } = await prepare(directory, actionsDocument([]))
+  const { actionsPath, policyPath, args } = await prepare(directory, actionsDocument([]))
   const run = await runCli([...args, '--json'])
   assert.equal(run.code, 2)
   const report = JSON.parse(run.stdout)
@@ -122,6 +122,30 @@ test('an empty plan cannot exit 0, and a pass with nothing checked cannot be bui
     assertReportInvariants(forged),
     ['a pass was produced with nothing checked'],
     'the production invariant, not just this test, refuses a pass over no evidence',
+  )
+
+  /**
+   * The second half of the name, asserted rather than asserted ABOUT.
+   *
+   * Everything above shows that `assertReportInvariants` can name the violation
+   * when it is handed one. It does not show that `finish` refuses to RETURN
+   * such a report, because no input reaches that state while the guard above is
+   * in place -- so the enforcement line survived being replaced by
+   * `void violations` with all of this green. Removing the guard from a copy of
+   * the source makes the violating report reachable, and the copy must refuse
+   * to build it.
+   */
+  const withoutTheEmptyPlanGuard = await importSourceWithSubstitution(t, {
+    file: 'index.mjs',
+    find: '  if (declared === 0) {',
+    replace: '  if (false) {',
+  })
+  const options = { actions: actionsPath, policy: policyPath, now: () => FIXED_NOW_MS }
+  assert.equal((await checkApprovalBoundary(options)).status, 'incomplete', 'the shipped guard still holds')
+  await assert.rejects(
+    () => withoutTheEmptyPlanGuard.checkApprovalBoundary(options),
+    /Report invariant violated: a pass was produced with nothing checked/,
+    'with that guard gone the builder would have returned status pass over checked 0; it has to throw instead',
   )
 })
 

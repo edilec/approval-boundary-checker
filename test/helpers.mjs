@@ -8,10 +8,10 @@
  */
 
 import { execFile } from 'node:child_process'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { copyFile, mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, pathToFileURL } from 'node:url'
 
 export const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)))
 export const CLI = join(PACKAGE_ROOT, 'bin', 'approval-boundary-checker.mjs')
@@ -43,6 +43,36 @@ export function runCli(args, options = {}) {
       (error, stdout, stderr) => settle({ code: error === null ? 0 : error.code, stdout, stderr }),
     )
   })
+}
+
+/**
+ * Import a COPY of `src/` with one exact substitution applied to it.
+ *
+ * Some guarantees cannot be reached from any input, and that is the point of
+ * them: the invariants `finish` re-checks fire only once some other guard has
+ * already failed. A test that calls `assertReportInvariants` on a hand-forged
+ * object proves the helper can COMPUTE a list of violations -- it says nothing
+ * about whether the builder acts on that list, and replacing the enforcement
+ * with `void violations` left this whole suite green.
+ *
+ * So the guard that keeps a violation unreachable is removed from a copy of the
+ * source in a scratch directory, and the copy is asked for a report over
+ * ordinary inputs. Nothing in the package is written to, the copy goes away
+ * with the test, and the substitution is asserted to match exactly once so a
+ * refactor that moves the guard fails loudly here instead of silently passing.
+ */
+export async function importSourceWithSubstitution(t, { file, find, replace }) {
+  const directory = await mkdtemp(join(tmpdir(), 'approval-boundary-checker-src-'))
+  t.after(() => rm(directory, { recursive: true, force: true }))
+  const source = join(PACKAGE_ROOT, 'src')
+  for (const name of await readdir(source)) await copyFile(join(source, name), join(directory, name))
+  const path = join(directory, file)
+  const text = await readFile(path, 'utf8')
+  if (text.split(find).length !== 2) {
+    throw new Error(`src/${file} does not contain exactly one ${JSON.stringify(find)}; this test needs updating`)
+  }
+  await writeFile(path, text.replace(find, replace))
+  return import(pathToFileURL(join(directory, 'index.mjs')).href)
 }
 
 export const FIXED_NOW = '2026-09-14T09:00:00Z'
