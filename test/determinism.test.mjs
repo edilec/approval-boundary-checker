@@ -13,7 +13,8 @@ import test from 'node:test'
 
 import { checkApprovalBoundary } from '../src/index.mjs'
 import {
-  FIXED_NOW, actionsDocument, externalWrite, prepare, runCli, validApproval, workspace, workspaceRead,
+  FIXED_NOW, actionsDocument, externalWrite, policyDocument, prepare, runCli, validApproval, workspace,
+  workspaceRead, writeFixture,
 } from './helpers.mjs'
 
 const PLAN = [
@@ -40,6 +41,39 @@ test('reordering the actions in the document changes nothing about the report', 
   const backward = await prepare(directory, actionsDocument([...PLAN].reverse()))
   const backwardOut = (await runCli([...backward.args, '--json'])).stdout
   assert.equal(forwardOut, backwardOut)
+})
+
+/**
+ * The fourth sort key is the one carrying the weight here.
+ *
+ * Two unknown keys at the top of the same document produce two findings with
+ * the same `location.file`, no pointer at all and the same `ruleId`, so
+ * `message` is the ONLY key that separates them. Without it the sort is stable
+ * on emission order, emission order is the order the keys happen to sit in the
+ * input, and stdout then depends on how somebody typed their JSON -- which the
+ * README promises it does not. The same file name is reused for both runs so
+ * that byte-identity is a fair comparison.
+ */
+test('two findings alike but for their message are ordered by it, not by the order of the input keys', async (t) => {
+  const directory = await workspace(t)
+  const policyPath = await writeFixture(directory, 'policy.json', policyDocument())
+  const runOver = async (document) => {
+    const actionsPath = await writeFixture(directory, 'actions.json', document)
+    return runCli(['--actions', actionsPath, '--policy', policyPath, '--now', FIXED_NOW, '--json'])
+  }
+
+  const zzzFirst = await runOver('{"schemaVersion":"1","zzz":1,"aaa":2,"actions":[]}')
+  const aaaFirst = await runOver('{"schemaVersion":"1","aaa":2,"zzz":1,"actions":[]}')
+  assert.equal(zzzFirst.code, 2)
+  assert.deepEqual(
+    JSON.parse(zzzFirst.stdout).findings.map((finding) => finding.message),
+    [
+      'The actions document declares the unknown key "aaa".',
+      'The actions document declares the unknown key "zzz".',
+    ],
+    'the message decides, so the document that lists zzz first still reports aaa first',
+  )
+  assert.equal(zzzFirst.stdout, aaaFirst.stdout, 'input key order reached stdout')
 })
 
 test('no timestamp reaches the report', async (t) => {
