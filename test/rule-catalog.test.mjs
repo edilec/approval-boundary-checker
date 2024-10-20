@@ -55,6 +55,22 @@ test('every rule in the table is documented, and every documented rule exists', 
   }
 })
 
+/**
+ * A document may not describe a WEAKER rule than the code applies either.
+ *
+ * `approval.test.mjs` drives the boundary through the real entry point and
+ * records that an approval whose `expiresAt` equals `--now` is expired. The
+ * README row said the approval "passed its `expiresAt` before `--now`", which is
+ * one instant looser than the tool behaves. An understatement drifts from the
+ * code exactly as an overclaim does; it just reads as modesty.
+ */
+test('the documented expiry boundary is the inclusive one the code applies', () => {
+  const row = readme.split('\n').find((line) => line.startsWith('| `approval-expired` |'))
+  assert.ok(row !== undefined, 'the approval-expired row was not found, so this test proves nothing')
+  assert.match(row, /at or before `--now`/)
+  assert.ok(!/passed its `expiresAt` before/.test(readme), 'the looser sentence must not come back')
+})
+
 test('every severity is one of the three the contract allows', () => {
   for (const [ruleId, severity] of Object.entries(RULE_SEVERITY)) {
     assert.ok(['error', 'warning', 'info'].includes(severity), `${ruleId} has severity ${severity}`)

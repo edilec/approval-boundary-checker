@@ -174,7 +174,7 @@ Each of these has a test that fails when the guarantee is removed from the code.
 | `actions-schema-unsupported` | error | The actions document declares a `schemaVersion` this release does not read. |
 | `actions-too-large` | error | The actions document is over `--max-actions-bytes`. |
 | `actions-unreadable` | error | The actions document could not be opened. |
-| `approval-expired` | error | The approval on record passed its `expiresAt` before `--now`. |
+| `approval-expired` | error | The approval on record reached its `expiresAt` at or before `--now`. The instant itself counts as expired. |
 | `approval-malformed` | error | An approval record is present and could not be read. This is not the same as none being supplied. |
 | `approval-missing` | error | The action requires approval and no approval record was supplied. |
 | `approval-scope-mismatch` | error | The approval names a different action than the one it is attached to. |
