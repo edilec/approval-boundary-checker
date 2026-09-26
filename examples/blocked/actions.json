@@ -1,0 +1,36 @@
+{
+  "schemaVersion": "1",
+  "actions": [
+    {
+      "id": "publish-release-notes",
+      "tool": "http.post",
+      "effect": "write",
+      "scope": "external",
+      "dataClasses": ["public"],
+      "target": "https://example.invalid/releases",
+      "description": "An external write with no approval on record. This is the one the checker exists to stop."
+    },
+    {
+      "id": "upload-signing-key",
+      "tool": "http.post",
+      "effect": "send",
+      "scope": "external",
+      "dataClasses": ["secret"],
+      "target": "https://example.invalid/vault-mirror",
+      "approval": {
+        "approvedBy": "release-manager",
+        "approvedAt": "2026-09-14T08:30:00Z"
+      },
+      "description": "Carries a perfectly valid approval. A denial is not something an approval can lift."
+    },
+    {
+      "id": "run-migration-script",
+      "tool": "shell.exec",
+      "effect": "execute",
+      "scope": "local",
+      "dataClasses": ["internal"],
+      "target": "./scripts/migrate.sh",
+      "description": "No rule in the policy says anything about local execution, so it falls to the default: review."
+    }
+  ]
+}

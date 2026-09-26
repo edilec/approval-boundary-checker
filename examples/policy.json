@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1",
+  "defaultDecision": "requires-approval",
+  "rules": [
+    {
+      "id": "workspace-read",
+      "effects": ["read"],
+      "scopes": ["local", "workspace"],
+      "decision": "allowed",
+      "description": "Reading what is already on the machine changes nothing and needs nobody's permission."
+    },
+    {
+      "id": "workspace-write",
+      "effects": ["write"],
+      "scopes": ["workspace"],
+      "decision": "allowed",
+      "description": "Writing inside the workspace is what the agent is for."
+    },
+    {
+      "id": "external-side-effect",
+      "effects": ["delete", "send", "write"],
+      "scopes": ["external"],
+      "decision": "requires-approval",
+      "description": "Anything that leaves this machine and changes something outside it is gated on a human."
+    },
+    {
+      "id": "destructive-delete",
+      "effects": ["delete"],
+      "scopes": ["local", "workspace"],
+      "decision": "requires-approval",
+      "description": "Deletion is not reversible by re-running the agent."
+    },
+    {
+      "id": "personal-egress",
+      "scopes": ["external"],
+      "dataClasses": ["personal"],
+      "decision": "requires-approval",
+      "description": "Personal data leaving the machine is a decision a person makes."
+    },
+    {
+      "id": "secret-egress",
+      "scopes": ["external"],
+      "dataClasses": ["secret"],
+      "decision": "denied",
+      "description": "Credentials never leave. There is no approval for this; that is the point of a denial."
+    }
+  ]
+}

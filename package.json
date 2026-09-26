@@ -1,0 +1,53 @@
+{
+  "name": "approval-boundary-checker",
+  "version": "0.1.0",
+  "description": "Classify the actions an agent plan declares against a permission, data and side-effect policy -- allowed, requires-approval, denied or matched by no rule -- and execute none of them.",
+  "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "lint": "node --check bin/approval-boundary-checker.mjs && node --check src/destination.mjs && node --check src/index.mjs && node --check src/policy.mjs && node --check src/text.mjs && node --check test/acceptance.test.mjs && node --check test/approval.test.mjs && node --check test/cli.test.mjs && node --check test/destination.test.mjs && node --check test/determinism.test.mjs && node --check test/helpers.mjs && node --check test/identifiers.test.mjs && node --check test/incomplete.test.mjs && node --check test/no-execution.test.mjs && node --check test/ordering.test.mjs && node --check test/parse-failure.test.mjs && node --check test/rule-catalog.test.mjs && node --check test/sanitisation.test.mjs && node --check test/selectors.test.mjs && node --check test/severity-outcomes.test.mjs",
+    "test": "node --test",
+    "test:coverage": "node --test --experimental-test-coverage --test-coverage-include=src/**",
+    "example": "node bin/approval-boundary-checker.mjs --actions examples/allowed/actions.json --policy examples/policy.json --now 2026-09-14T09:00:00Z --decisions-out build/example-decisions.json",
+    "example:failing": "node bin/approval-boundary-checker.mjs --actions examples/blocked/actions.json --policy examples/policy.json --now 2026-09-14T09:00:00Z; test $? -eq 1",
+    "pack:check": "npm pack --dry-run",
+    "check": "npm run lint && npm test && mkdir -p build && npm run example && npm run example:failing && npm run pack:check"
+  },
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/edilec/approval-boundary-checker.git"
+  },
+  "bin": {
+    "approval-boundary-checker": "./bin/approval-boundary-checker.mjs"
+  },
+  "exports": {
+    ".": "./src/index.mjs"
+  },
+  "files": [
+    "bin",
+    "src",
+    "examples",
+    "docs",
+    "README.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "keywords": [
+    "agent",
+    "approval",
+    "policy",
+    "permissions",
+    "side-effects",
+    "static-analysis",
+    "guardrails",
+    "cli"
+  ],
+  "author": "Edilec Private Limited",
+  "bugs": {
+    "url": "https://github.com/edilec/approval-boundary-checker/issues"
+  },
+  "homepage": "https://github.com/edilec/approval-boundary-checker#readme"
+}
