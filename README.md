@@ -297,6 +297,10 @@ only way to prove from outside that the flag reaches the classification loop.
 npm run check   # lint + tests + both examples + npm pack --dry-run
 ```
 
+## Related engineering context
+
+The [Edilec guide to AI agents in business workflows](https://edilec.com/blog/ai-1024/how-ai-agents-work-in-business-workflows/) discusses orchestration and human approval paths around deployed agents. This CLI only checks the action and policy documents it receives; it does not enforce permissions at runtime. Edilec maintains this repository, and this note was prepared with AI assistance and reviewed against the public guide.
+
 ## License
 
 MIT. See [LICENSE](./LICENSE).
